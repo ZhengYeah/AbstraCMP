@@ -14,4 +14,4 @@ def mnist2img(filename):
 
 
 if __name__ == "__main__":
-    mnist2img("properties/mnist_13_local_property.in")
+    mnist2img("mnist_properties/mnist_property_22.txt")

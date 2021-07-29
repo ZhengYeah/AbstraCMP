@@ -1,5 +1,7 @@
 from copy import deepcopy
 import numpy as np
+import time
+
 
 class neuron(object):
     """
@@ -102,10 +104,10 @@ class network(object):
         self.ranges = None
         self.layers = None
         self.property_flag = None
-        # path_num + 1 is actually the total path number we use
-        self.path_num = 9
+        # path_num + 2 is actually the total path number we use
+        self.path_num = 1
 
-    def multipath(self):
+    def abstracmp(self):
 
         def back_propagation(cur_neuron, i):
             if i == 0:
@@ -430,92 +432,13 @@ class network(object):
             self.means = inputMeans
             self.ranges = inputRanges
 
-    def load_rlv(self, filename):
-        layersize = []
-        dicts = []
-        self.layers = []
-        with open(filename, 'r') as f:
-            line = f.readline()
-            while line:
-                if line.startswith('#'):
-                    linedata = line.replace('\n', '').split(' ')
-                    layersize.append(int(linedata[3]))
-                    layerdict = {}
-                    if linedata[4] == 'Input':
-                        new_layer = layer()
-                        new_layer.layer_type = layer.INPUT_LAYER
-                        new_layer.size = layersize[-1]
-                        new_layer.neurons = []
-                        for i in range(layersize[-1]):
-                            new_neuron = neuron()
-                            new_layer.neurons.append(new_neuron)
-                            line = f.readline()
-                            linedata = line.split(' ')
-                            layerdict[linedata[1].replace('\n', '')] = i
-                        dicts.append(layerdict)
-                        self.layers.append(new_layer)
-                    elif linedata[4] == 'ReLU':
-                        new_layer = layer()
-                        new_layer.layer_type = layer.AFFINE_LAYER
-                        new_layer.size = layersize[-1]
-                        new_layer.neurons = []
-                        for i in range(layersize[-1]):
-                            new_neuron = neuron()
-                            new_neuron.weight = np.zeros(layersize[-2])
-                            line = f.readline()
-                            linedata = line.replace('\n', '').split(' ')
-                            layerdict[linedata[1]] = i
-                            new_neuron.bias = float(linedata[2])
-                            nodeweight = linedata[3::2]
-                            nodename = linedata[4::2]
-                            assert (len(nodeweight) == len(nodename))
-                            for j in range(len(nodeweight)):
-                                new_neuron.weight[dicts[-1][nodename[j]]] = float(nodeweight[j])
-                            new_layer.neurons.append(new_neuron)
-                        self.layers.append(new_layer)
-                        dicts.append(layerdict)
-                        # add relu layer
-                        new_layer = layer()
-                        new_layer.layer_type = layer.RELU_LAYER
-                        new_layer.size = layersize[-1]
-                        new_layer.neurons = []
-                        for i in range(layersize[-1]):
-                            new_neuron = neuron()
-                            new_layer.neurons.append(new_neuron)
-                        self.layers.append(new_layer)
-                    elif (linedata[4] == 'Linear') and (linedata[5] != 'Accuracy'):
-                        new_layer = layer()
-                        new_layer.layer_type = layer.AFFINE_LAYER
-                        new_layer.size = layersize[-1]
-                        new_layer.neurons = []
-                        for i in range(layersize[-1]):
-                            new_neuron = neuron()
-                            new_neuron.weight = np.zeros(layersize[-2])
-                            line = f.readline()
-                            linedata = line.replace('\n', '').split(' ')
-                            layerdict[linedata[1]] = i
-                            new_neuron.bias = float(linedata[2])
-                            nodeweight = linedata[3::2]
-                            nodename = linedata[4::2]
-                            assert (len(nodeweight) == len(nodename))
-                            for j in range(len(nodeweight)):
-                                new_neuron.weight[dicts[-1][nodename[j]]] = float(nodeweight[j])
-                            new_layer.neurons.append(new_neuron)
-                        self.layers.append(new_layer)
-                        dicts.append(layerdict)
-                line = f.readline()
-
-        self.layerSizes = layersize
-        self.inputSize = layersize[0]
-        self.outputSize = layersize[-1]
-        self.numLayers = len(layersize) - 1
 
     def find_max_disturbance(self, PROPERTY, L=0, R=1000, TRIM=False):
         ans = 0
         while L <= R:
             mid = int((L + R) / 2)
             self.load_robustness(PROPERTY, mid / 1000, TRIM=TRIM)
-            self.multipath()
+            self.abstracmp()
             flag = True
             for neuron_i in self.layers[-1].neurons:
                 if neuron_i.concrete_lowest_upper > 0:
@@ -528,48 +451,29 @@ class network(object):
         return ans
 
 
-def main():
-    net = network()
-    net.load_rlv("rlv/caffeprototxt_AI2_MNIST_FNN_6_testNetworkB.rlv")
-    property_list = ["properties/mnist_" + str(i) + "_local_property.in" for i in range(50)]
-    delta = 0.015
-    for property_i in property_list:
-        net.load_robustness(property_i, delta, TRIM=True)
-        net.multipath()
-        flag = True
-        for neuron_i in net.layers[-1].neurons:
-            if neuron_i.concrete_upper > 0:
-                flag = False
-        if flag == True:
-            print("Success!")
-        else:
-            print("Failed!")
-
-
 def mnist_robustness_radius():
     net = network()
-    net.load_nnet("nnet/mnist_net_16_50.nnet")
-    property_list = ["properties/mnist_" + str(i) + "_local_property.in" for i in range(100)]
+    net.load_nnet("nnet/mnist_net_20x50.nnet")
+    property_list = ["mnist_properties/mnist_property_" + str(i) + ".txt" for i in range(100)]
     for property_i in property_list:
         delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=True)
         print(delta_base)
 
 
 def acas_robustness_radius():
-    net = network()
-    net.load_nnet("nnet/ACASXU_experimental_v2a_3_1.nnet")
-    property_list = ["properties/local_robustness_" + str(i) + ".txt" for i in range(1, 7)]
-    for property_i in property_list:
-        delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=False)
-        print(delta_base)
-
-
-def test_example():
-    net = network()
-    net.load_nnet("nnet/deeppoly_paper_illustration.nnet")
-    net.load_robustness("properties/deeppoly_paper_illustration.txt", 1)
-    net.multipath()
-    net.print()
+    for i in range(1, 11):
+        net = network()
+        net.path_num = i
+        print('Now: path_num =', net.path_num)
+        net.load_nnet("nnet/ACASXU_experimental_v2a_2_3.nnet")
+        property_list = ["acas_properties/local_robustness_" + str(i) + ".txt" for i in range(2, 3)]
+        for j in range(10):
+            for property_i in property_list:
+                star_time = time.time()
+                delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=False)
+                end_time = time.time()
+                print('Time:', end_time - star_time)
+                print(delta_base)
 
 
 if __name__ == "__main__":
