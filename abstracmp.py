@@ -453,8 +453,8 @@ class network(object):
 
 def mnist_robustness_radius():
     net = network()
-    net.load_nnet("nnet/mnist_net_20x50.nnet")
-    property_list = ["mnist_properties/mnist_property_" + str(i) + ".txt" for i in range(100)]
+    net.load_nnet('results/experiment_4/mnist_net_8x80.nnet')
+    property_list = ["mnist_properties/mnist_property_" + str(i) + ".txt" for i in range(50)]
     for property_i in property_list:
         delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=True)
         print(delta_base)
@@ -474,6 +474,15 @@ def acas_robustness_radius():
                 end_time = time.time()
                 print('Time:', end_time - star_time)
                 print(delta_base)
+
+
+def cifar_robustness_radius():
+    net = network()
+    net.load_nnet("nnet/cifar_net_10x200.nnet")
+    property_list = ["cifar_properties_10x200/cifar_property_" + str(i) + ".txt" for i in range(50)]
+    for property_i in property_list:
+        delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=True)
+        print(delta_base)
 
 
 if __name__ == "__main__":

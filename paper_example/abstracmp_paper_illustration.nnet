@@ -1,0 +1,23 @@
+// The contents of this file are licensed under the Creative Commons
+// Attribution 4.0 International License: https://creativecommons.org/licenses/by/4.0/
+// Neural Network File Format by Kyle Julian, Stanford 2016
+3,2,2,2,
+2,2,2,2,
+0,
+-100.0,-100.0,
+100.0,100.0,
+0.0,0.0,
+200.0,200.0,
+-1,1,
+1,-1,
+0,
+0,
+1,-1,
+1,-1,
+0,
+0,
+1,-1,
+-1,1,
+0,
+0,
+

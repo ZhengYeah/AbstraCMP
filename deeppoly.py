@@ -375,6 +375,15 @@ def acas_robustness_radius():
             print(delta_base)
 
 
+def cifar_robustness_radius():
+    net = network()
+    net.load_nnet("nnet/cifar_net_10x200.nnet")
+    property_list = ["cifar_properties_10x200/cifar_property_" + str(i) + ".txt" for i in range(50)]
+    for property_i in property_list:
+        delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=True)
+        print(delta_base)
+
+
 def test_example():
     net = network()
     net.load_nnet('others/abstracmp_paper_illustration.nnet')
