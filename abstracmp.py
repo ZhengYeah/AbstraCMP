@@ -104,7 +104,7 @@ class network(object):
         self.ranges = None
         self.layers = None
         self.property_flag = None
-        # path_num + 2 is actually the total path number we use
+        # path_num + 2 is actually the total path number in use
         self.path_num = 1
 
     def abstracmp(self):
@@ -478,8 +478,8 @@ def acas_robustness_radius():
 
 def cifar_robustness_radius():
     net = network()
-    net.load_nnet("nnet/cifar_net_10x200.nnet")
-    property_list = ["cifar_properties_10x200/cifar_property_" + str(i) + ".txt" for i in range(50)]
+    net.load_nnet("nnet/cifar_net_10x100.nnet")
+    property_list = ["cifar_properties_10x100/cifar_property_" + str(i) + ".txt" for i in range(50)]
     for property_i in property_list:
         delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=True)
         print(delta_base)

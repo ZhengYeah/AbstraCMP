@@ -334,24 +334,6 @@ class network(object):
         return ans
 
 
-def main():
-    net = network()
-    net.load_nnet("nnet/cifar_net.nnet")
-    property_list = ["mnist_properties/cifar_input.txt"]
-    delta = 0.0
-    for property_i in property_list:
-        net.load_robustness(property_i, delta, TRIM=True)
-        net.deeppoly()
-        flag = True
-        for neuron_i in net.layers[-1].neurons:
-            if neuron_i.concrete_upper > 0:
-                flag = False
-        if flag == True:
-            print("Success!")
-        else:
-            print("Failed!")
-
-
 def mnist_robustness_radius():
     net = network()
     net.load_nnet("nnet/mnist_net_20x50.nnet")
@@ -377,8 +359,8 @@ def acas_robustness_radius():
 
 def cifar_robustness_radius():
     net = network()
-    net.load_nnet("nnet/cifar_net_10x200.nnet")
-    property_list = ["cifar_properties_10x200/cifar_property_" + str(i) + ".txt" for i in range(50)]
+    net.load_nnet("nnet/cifar_net_10x100.nnet")
+    property_list = ["cifar_properties_10x100/cifar_property_" + str(i) + ".txt" for i in range(50)]
     for property_i in property_list:
         delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=True)
         print(delta_base)
@@ -386,8 +368,8 @@ def cifar_robustness_radius():
 
 def test_example():
     net = network()
-    net.load_nnet('others/abstracmp_paper_illustration.nnet')
-    net.load_robustness('others/abstracmp_paper_illustration.txt', 1)
+    net.load_nnet('paper_example/abstracmp_paper_illustration.nnet')
+    net.load_robustness('paper_example/abstracmp_paper_illustration.txt', 1)
     net.deeppoly()
     net.print()
 

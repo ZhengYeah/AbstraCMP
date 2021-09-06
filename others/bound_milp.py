@@ -90,7 +90,7 @@ class network(object):
         self.ranges = None
         self.layers = None
 
-    def milp(self, SOLVER = cp.GUROBI):
+    def milp(self, SOLVER=cp.GUROBI):
         variables, delta = [], []
         constraints = []
         for i in range(len(self.layers)):
@@ -121,11 +121,11 @@ class network(object):
                         constraints.append(variables[k][p] <= delta[k][p] * self.layers[k - 1].neurons[p].concrete_upper)
                         constraints.append(variables[k][p] >= 0)
 
-        for i in range((self.layers[-1].size)):
+        for i in range(self.layers[-1].size):
             prob_min = cp.Problem(cp.Minimize(variables[-1][i]), constraints)
             prob_max = cp.Problem(cp.Maximize(variables[-1][i]), constraints)
-            prob_min.solve(solver = SOLVER)
-            prob_max.solve(solver = SOLVER)
+            prob_min.solve(solver=SOLVER)
+            prob_max.solve(solver=SOLVER)
             print("Node " + str(i) + " Exact Reachable Range:", [prob_min.value, prob_max.value], end=" ")
             print("From Input:", [variables[0][j].value for j in range(self.layers[0].size)])
 
