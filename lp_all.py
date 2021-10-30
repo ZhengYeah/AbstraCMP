@@ -1,6 +1,6 @@
-from copy import deepcopy
 import numpy as np
-import time
+import cvxpy as cp
+
 
 class neuron(object):
     """
@@ -11,7 +11,7 @@ class neuron(object):
         concrete_algebra_upper (numpy ndarray of float): neuron's algebra upper bound(coeffients of input neurons and a constant)
         concrete_lower (float): neuron's concrete lower bound
         concrete_upper (float): neuron's concrete upper bound
-        weight (numpy ndarray of float): neuron's weight        
+        weight (numpy ndarray of float): neuron's weight
         bias (float): neuron's bias
         certain_flag (int): 0 uncertain 1 activated(>=0) 2 deactivated(<=0)
     """
@@ -29,10 +29,10 @@ class neuron(object):
         self.certain_flag = 0
 
     def print(self):
-        # print('algebra_lower:', self.algebra_lower)
-        # print('algebra_upper:', self.algebra_upper)
-        # print('concrete_algebra_lower:', self.concrete_algebra_lower)
-        # print('concrete_algebra_upper:', self.concrete_algebra_upper)
+        print('algebra_lower:', self.algebra_lower)
+        print('algebra_upper:', self.algebra_upper)
+        print('concrete_algebra_lower:', self.concrete_algebra_lower)
+        print('concrete_algebra_upper:', self.concrete_algebra_upper)
         print('concrete_lower:', self.concrete_lower)
         print('concrete_upper:', self.concrete_upper)
         # print('weight:', self.weight)
@@ -90,98 +90,6 @@ class network(object):
         self.layers = None
         self.property_flag = None
 
-    def deeppoly(self):
-
-        def back_propagation(cur_neuron, i):
-            if i == 0:
-                cur_neuron.concrete_algebra_lower = deepcopy(cur_neuron.algebra_lower)
-                cur_neuron.concrete_algebra_upper = deepcopy(cur_neuron.algebra_upper)
-            lower_bound = deepcopy(cur_neuron.algebra_lower)
-            upper_bound = deepcopy(cur_neuron.algebra_upper)
-            for k in range(i + 1)[::-1]:
-                tmp_lower = np.zeros(len(self.layers[k].neurons[0].algebra_lower))
-                tmp_upper = np.zeros(len(self.layers[k].neurons[0].algebra_lower))
-                for p in range(self.layers[k].size):
-                    if lower_bound[p] >= 0:
-                        tmp_lower += lower_bound[p] * self.layers[k].neurons[p].algebra_lower
-                    else:
-                        tmp_lower += lower_bound[p] * self.layers[k].neurons[p].algebra_upper
-
-                    if upper_bound[p] >= 0:
-                        tmp_upper += upper_bound[p] * self.layers[k].neurons[p].algebra_upper
-                    else:
-                        tmp_upper += upper_bound[p] * self.layers[k].neurons[p].algebra_lower
-                tmp_lower[-1] += lower_bound[-1]
-                tmp_upper[-1] += upper_bound[-1]
-                lower_bound = deepcopy(tmp_lower)
-                upper_bound = deepcopy(tmp_upper)
-
-                if k == 1:
-                    cur_neuron.concrete_algebra_lower = deepcopy(lower_bound)
-                    cur_neuron.concrete_algebra_upper = deepcopy(upper_bound)
-
-            assert (len(lower_bound) == 1)
-            assert (len(upper_bound) == 1)
-            cur_neuron.concrete_lower = lower_bound[0]
-            cur_neuron.concrete_upper = upper_bound[0]
-
-        for i in range(len(self.layers) - 1):
-            # print('i=',i)
-            pre_layer = self.layers[i]
-            cur_layer = self.layers[i + 1]
-            pre_neuron_list = pre_layer.neurons
-            cur_neuron_list = cur_layer.neurons
-            
-            if cur_layer.layer_type == layer.AFFINE_LAYER:
-                for j in range(cur_layer.size):
-                    cur_neuron = cur_neuron_list[j]
-                    cur_neuron.algebra_lower = np.append(cur_neuron.weight, [cur_neuron.bias])
-                    cur_neuron.algebra_upper = np.append(cur_neuron.weight, [cur_neuron.bias])
-                    # note: layer index of cur_neuron is i + 1, so pack propagate form i
-                    back_propagation(cur_neuron, i)
-
-            elif cur_layer.layer_type == layer.RELU_LAYER:
-                for j in range(cur_layer.size):
-                    cur_neuron = cur_neuron_list[j]
-                    pre_neuron = pre_neuron_list[j]
-
-                    if pre_neuron.concrete_lower >= 0:
-                        cur_neuron.algebra_lower = np.zeros(cur_layer.size + 1)
-                        cur_neuron.algebra_upper = np.zeros(cur_layer.size + 1)
-                        cur_neuron.algebra_lower[j] = 1
-                        cur_neuron.algebra_upper[j] = 1
-                        cur_neuron.concrete_algebra_lower = deepcopy(pre_neuron.concrete_algebra_lower)
-                        cur_neuron.concrete_algebra_upper = deepcopy(pre_neuron.concrete_algebra_upper)
-                        cur_neuron.concrete_lower = pre_neuron.concrete_lower
-                        cur_neuron.concrete_upper = pre_neuron.concrete_upper
-                        cur_neuron.certain_flag = 1
-
-                    elif pre_neuron.concrete_upper <= 0:
-                        cur_neuron.algebra_lower = np.zeros(cur_layer.size + 1)
-                        cur_neuron.algebra_upper = np.zeros(cur_layer.size + 1)
-                        cur_neuron.concrete_algebra_lower = np.zeros(self.inputSize)
-                        cur_neuron.concrete_algebra_upper = np.zeros(self.inputSize)
-                        cur_neuron.concrete_lower = 0
-                        cur_neuron.concrete_upper = 0
-                        cur_neuron.certain_flag = 2
-
-                    elif pre_neuron.concrete_lower + pre_neuron.concrete_upper <= 0:
-                        cur_neuron.algebra_lower = np.zeros(cur_layer.size + 1)
-                        alpha = pre_neuron.concrete_upper / (pre_neuron.concrete_upper - pre_neuron.concrete_lower)
-                        cur_neuron.algebra_upper = np.zeros(cur_layer.size + 1)
-                        cur_neuron.algebra_upper[j] = alpha
-                        cur_neuron.algebra_upper[-1] = -alpha * pre_neuron.concrete_lower
-                        back_propagation(cur_neuron, i)
-
-                    else:
-                        cur_neuron.algebra_lower = np.zeros(cur_layer.size + 1)
-                        cur_neuron.algebra_lower[j] = 1
-                        alpha = pre_neuron.concrete_upper / (pre_neuron.concrete_upper - pre_neuron.concrete_lower)
-                        cur_neuron.algebra_upper = np.zeros(cur_layer.size + 1)
-                        cur_neuron.algebra_upper[j] = alpha
-                        cur_neuron.algebra_upper[-1] = -alpha * pre_neuron.concrete_lower
-                        back_propagation(cur_neuron, i)
-
     def print(self):
         print('numlayers:', self.numLayers)
         print('layerSizes:', self.layerSizes)
@@ -195,7 +103,7 @@ class network(object):
             l.print()
             print('\n')
 
-    def load_robustness(self, filename, delta, TRIM=False):
+    def load_robustness(self, filename, delta, trim=False):
         if self.property_flag == True:
             self.layers.pop()
         self.property_flag = True
@@ -203,7 +111,7 @@ class network(object):
             for i in range(self.layerSizes[0]):
                 line = f.readline()
                 linedata = [float(line.strip()) - delta, float(line.strip()) + delta]
-                if TRIM:
+                if trim:
                     if linedata[0] < 0: linedata[0] = 0
                     if linedata[1] > 1: linedata[1] = 1
 
@@ -314,13 +222,13 @@ class network(object):
             self.means = inputMeans
             self.ranges = inputRanges
 
-    def find_max_disturbance(self, PROPERTY, L=0, R=1000, TRIM=False):
+    def find_max_disturbance(self, PROPERTY, L=0, R=100, trim=False):
         ans = 0
         while L <= R:
             # print(L,R)
             mid = int((L + R) / 2)
-            self.load_robustness(PROPERTY, mid / 1000, TRIM=TRIM)
-            self.deeppoly()
+            self.load_robustness(PROPERTY, mid / 1000, trim=trim)
+            self.lp_all()
             flag = True
             for neuron_i in self.layers[-1].neurons:
                 # print(neuron_i.concrete_upper)
@@ -333,53 +241,82 @@ class network(object):
                 R = mid - 1
         return ans
 
+    def lp_all(self):
+        for dim_i in range(len(self.layers)):
+            lp_vars = []
+            lp_constraints = []
+            # Initialize variables from the input layer to the dim_i layer.
+            for i in range(dim_i + 1):
+                lp_vars.append(cp.Variable(self.layers[i].size))
 
-def mnist_robustness_radius():
-    net = network()
-    net.load_nnet("nnet/mnist_net_20x50.nnet")
-    property_list = ["mnist_properties/mnist_property_" + str(i) + ".txt" for i in range(100)]
-    for property_i in property_list:
-        delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=True)
-        print(delta_base)
+            # Construct LP constraints from the input layer to the dim_i layer.
+            for i in range(dim_i + 1):
+                if self.layers[i].layer_type == layer.INPUT_LAYER:
+                    for j in range(self.layers[i].size):
+                        # i = 0
+                        lp_constraints.append(lp_vars[i][j] >= self.layers[i].neurons[j].concrete_lower)
+                        lp_constraints.append(lp_vars[i][j] <= self.layers[i].neurons[j].concrete_upper)
+                elif self.layers[i].layer_type == layer.AFFINE_LAYER:
+                    assert i > 0
+                    for j in range(self.layers[i].size):
+                        lp_constraints.append(lp_vars[i][j] == self.layers[i].neurons[j].weight @ lp_vars[i - 1] + self.layers[i].neurons[j].bias)
+                elif self.layers[i].layer_type == layer.RELU_LAYER:
+                    assert self.layers[i].size == self.layers[i - 1].size
+                    assert i > 0
+                    for j in range(self.layers[i].size):
+                        if self.layers[i - 1].neurons[j].concrete_lower >= 0:
+                            lp_constraints.append(lp_vars[i][j] == lp_vars[i - 1][j])
+                        elif self.layers[i - 1].neurons[j].concrete_upper <= 0:
+                            lp_constraints.append(lp_vars[i][j] == 0)
+                        elif self.layers[i - 1].neurons[j].concrete_lower < 0 and self.layers[i - 1].neurons[j].concrete_upper > 0:
+                            lp_constraints.append(cp.multiply(lp_vars[i][j], self.layers[i - 1].neurons[j].concrete_upper - self.layers[i - 1].neurons[j].concrete_lower) <=
+                                                  cp.multiply(self.layers[i - 1].neurons[j].concrete_upper, lp_vars[i - 1][j] - self.layers[i - 1].neurons[j].concrete_lower))
+                            lp_constraints.append(lp_vars[i][j] >= 0)
+                            lp_constraints.append(lp_vars[i][j] >= lp_vars[i - 1][j])
 
+            # Solve LP for dim_i layer intermediate bounds.
+            if dim_i == 0:
+                continue
+            for j in range(self.layers[dim_i].size):
+                if dim_i == len(self.layers) - 1:
+                    lp_upper_prob = cp.Problem(cp.Maximize(lp_vars[dim_i][j]), lp_constraints)
+                    lp_upper_prob.solve(verbose=False, solver=cp.ECOS)
+                    lp_upper_val = lp_vars[dim_i][j].value
+                    self.layers[dim_i].neurons[j].concrete_upper = lp_upper_val
+                    print('margins:', lp_upper_val)
+                    continue
 
-def acas_robustness_radius():
-    for recur in range(1, 11):
-        print("Recur:", recur)
-        net = network()
-        net.load_nnet("nnet/ACASXU_experimental_v2a_2_3.nnet")
-        property_list = ["acas_properties/local_robustness_" + str(i) + ".txt" for i in range(2, 3)]
-        for property_i in property_list:
-            star_time = time.time()
-            delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=False)
-            end_time = time.time()
-            print('Time:', end_time - star_time)
-            print(delta_base)
+                lp_upper_prob = cp.Problem(cp.Maximize(lp_vars[dim_i][j]), lp_constraints)
+                lp_upper_prob.solve(verbose=False, solver=cp.ECOS)
+                lp_upper_val = lp_vars[dim_i][j].value
+                self.layers[dim_i].neurons[j].concrete_upper = lp_upper_val
 
+                lp_lower_prob = cp.Problem(cp.Minimize(lp_vars[dim_i][j]), lp_constraints)
+                lp_lower_prob.solve(verbose=False, solver=cp.ECOS)
+                lp_lower_val = lp_vars[dim_i][j].value
+                self.layers[dim_i].neurons[j].concrete_lower = lp_lower_val
 
-def cifar_robustness_radius():
-    net = network()
-    net.load_nnet("nnet/cifar_net_10x100.nnet")
-    property_list = ["cifar_properties_10x100/cifar_property_" + str(i) + ".txt" for i in range(50)]
-    for property_i in property_list:
-        delta_base = net.find_max_disturbance(PROPERTY=property_i, TRIM=True)
-        print(delta_base)
+                # print('Layer: %d, Neuron: %d - LP lower: %.8f, LP upper: %.8f' % (dim_i, j, lp_lower_val, lp_upper_val))
 
 
 def test_example():
     net = network()
     net.load_nnet('paper_example/abstracmp_paper_illustration.nnet')
     net.load_robustness('paper_example/abstracmp_paper_illustration.txt', 1)
-    net.deeppoly()
-    net.print()
+    net.lp_all()
 
-def test_acas():
+
+def mnist_robustness_radius():
     net = network()
     net.load_nnet('nnet/mnist_net_10x80.nnet')
-    net.load_robustness('mnist_properties/mnist_property_15.txt', 0.001, TRIM=True)
-    net.deeppoly()
-    net.print()
+    # net.load_robustness('mnist_properties/mnist_property_15.txt', 0.001, trim=True)
+    delta_base = net.find_max_disturbance('mnist_properties/mnist_property_15.txt', trim=True)
+    print(delta_base)
+
+    # with open('tmp/lp_all', 'w') as f1:
+    #     f1.write('%.5f\n' % delta_base)
 
 
-if __name__ == "__main__":
-    test_acas()
+if __name__ == '__main__':
+    mnist_robustness_radius()
+

@@ -485,5 +485,42 @@ def cifar_robustness_radius():
         print(delta_base)
 
 
+def test_acas():
+    net = network()
+    net.load_nnet('nnet/ACASXU_experimental_v2a_2_3.nnet')
+    net.load_robustness('acas_properties/local_robustness_5.txt', 0.01)
+    net.abstracmp()
+    net.print()
+
+
+def time_mnist():
+    net = network()
+    net.load_nnet('nnet/mnist_net_10x80.nnet')
+    # net.load_robustness('mnist_properties/mnist_property_15.txt', 0.001, trim=True)
+    start_time = time.time()
+    delta_base = net.find_max_disturbance('mnist_properties/mnist_property_20.txt', TRIM=True)
+    end_time = time.time()
+    print(delta_base)
+    print(end_time - start_time)
+
+
+def test_example():
+    net = network()
+    net.load_nnet('paper_example/abstracmp_paper_illustration.nnet')
+    net.load_robustness('paper_example/abstracmp_paper_illustration.txt', 1)
+    net.abstracmp()
+
+
 if __name__ == "__main__":
+    # Paper illustration example
+    test_example()
+
+    # Experiments in section 3.1 and 3.2
+    acas_robustness_radius()
+
+    # Experiments in section 3.3
     mnist_robustness_radius()
+    cifar_robustness_radius()
+
+    # Experiments in section 3.5
+    time_mnist()
